@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Question-Stat</title>
+    <link rel="stylesheet" type="text/css" href="css/enseignant.css">
+</head>
+
+<body>
+<h1>Bienvenue dans votre application Question-stat!</h1>
+<section id="ajoutQuestion">
+       <a id="ajout_question" title="Ajouter une question" href="/ajoutQuestion"/>Ajouter des questions</a>
+</section>
+
+<section id="creation_salon_enseignant">
+    <form>
+        <fieldset>
+            <legend>Choix du salon</legend>
+            <label for="nom_salon">Nom du salon</label> : <input type="text" name="nom_salon" id="nom_salon" autofocus/>
+        </fieldset>
+        <fieldset id="listNiveaux">
+            <legend>Choix du niveau</legend>
+        </fieldset>
+        <fieldset id="listModules">
+            <legend>Choix du module</legend>
+        </fieldset>
+        <input id="lancement_salon" type="submit" value="Ouverture du salon"/>
+    </form>
+</section>
+
+<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io.connect('http://localhost:8080');
+
+    var nom_salon;
+    var afficherStatsDisabled = false;
+    var afficherReponsesDisable = false;
+
+    function initSalon(){
+        //Choix du niveau
+        socket.on('choix_niveau', function(listNiveaux){
+
+            $('#listModules').html('<legend>Choix du module</legend>' +
+                '<p>(Choisissez votre niveau)</p>');
+
+            $('#listNiveaux').html('<legend>Choix du Niveau</legend>');
+
+            for(var id in listNiveaux){
+                $('#listNiveaux').append('<div>'
+                    + '\n\t<input type="radio" name="niveau" value="' + id + '" id="niveau_' + id + '"/>'
+                    + '\n\t<label for="niveau_' + id + '">' + listNiveaux[id] + '</label>'
+                    + '\n</div>')
+            }
+
+
+            $('input:radio[name=niveau]').click(function(){
+                var niveauId = $('input:radio[name=niveau]:checked').attr('value');
+                socket.emit('choix_niveau', niveauId);
+            });
+        });
+
+
+        //Choix module
+        socket.on('choix_module', function(listModules) {
+
+            $('#listModules').html('<legend>Choix du module</legend>');
+
+            for (var id in listModules) {
+                $('#listModules').append('<div>'
+                    + '\n\t<input type="radio" name="module" value="' + id + '" id="module_' + id + '"/>'
+                    + '\n\t<label for="module_' + id + '">' + listModules[id] + '</label>'
+                    + '\n</div>')
+            }
+        });
+
+        //Création du salon
+        $('#lancement_salon').click(function(event){
+            event.preventDefault();
+            var nom_salon_temp = $('#nom_salon').val();
+            var choix_niveau = $('input:radio[name=niveau]:checked').attr('value');
+            var choix_module = $('input:radio[name=module]:checked').attr('value');
+
+            if((nom_salon_temp.trim().length > 0) && ($('input:radio[name=niveau]:checked').length > 0 ) && ($('input:radio[name=module]:checked').length > 0 )){
+                nom_salon = nom_salon_temp.trim();
+                socket.emit('ouverture_salon', {nom_salon: nom_salon, choix_module: choix_module});
+            }else if($('input:radio[name=niveau]:checked').length == 0){
+                alert('Veuillez choisir un niveau');
+            }else if($('input:radio[name=module]:checked').length == 0 ){
+                alert('Veuillez choisir un module');
+            }else if(nom_salon_temp.trim().length == 0){
+                $('#nom_salon').val('');
+                alert('Le nom du salon ne doit pas être composé uniquement d\'espaces');
+            }
+        });
+    }
+
+    initSalon();
+
+    socket.on('salon_existant', function(){
+        $('#nom_salon').val('');
+        alert("Ce salon existe déjà." + "\n" + "Merci d'en saisir un autre.");
+    });
+
+    //ouverture du salon
+    socket.on('salon_ouvert', function(data){
+        document.title = nom_salon;
+        afficherStatsDisabled = false;
+        afficherReponsesDisable = false;
+        $('body').html(data.page);
+
+        $('#lancer_questions').click(function(){
+            socket.emit('poser_question', {nom_salon: nom_salon, nouvelle_question: true, init: true});
+        });
+
+        $('#fermer_salon').click(function(){
+           socket.emit('fermer_salon', nom_salon);
+        });
+    });
+
+    //fermeture du salon
+    socket.on('fermer_salon', function(data){
+        if(data.nom_salon == nom_salon){
+            $('body').html(data.page);
+            nom_salon = '';
+            document.title = 'Question-Stat';
+            initSalon();
+        }
+    });
+
+    //écoute les étudiants qui se connectent
+    socket.on('list_users', function(salon){
+
+        if(salon.nom_salon == nom_salon){
+
+            $('#listUsers').html('');
+
+            var listUsers = salon.listUsers;
+
+            for(var id in listUsers){
+                $('#listUsers').append('<li>' +
+                    '<a title="rejeter cet étudiant" href="'+ listUsers[id].pseudo +'">&#x2718;</a>' +
+                    'Pseudo: ' + listUsers[id].pseudo + '</li>');
+            }
+
+            $('a').click(function(event){
+                event.preventDefault();
+                var pseudo = $(this).attr('href');
+                socket.emit('eject_user', {pseudo: pseudo, nom_salon: nom_salon});
+            });
+        }
+    });
+
+    socket.on('start_question', function(data){
+
+        if(data.nom_salon == nom_salon){
+            $('#content').html(data.page);
+
+            if(afficherStatsDisabled){
+                $('#afficher_stats').attr('disabled', true);
+                $('#masquer_stats').attr('disabled', false);
+            }else{
+                $('#afficher_stats').attr('disabled', false);
+                $('#masquer_stats').attr('disabled', true);
+            }
+
+            if(afficherReponsesDisable){
+                $('#afficher_bonnes_reponses').attr('disabled', true);
+                $('#masquer_bonnes_reponses').attr('disabled', false);
+            }else{
+                $('#afficher_bonnes_reponses').attr('disabled', false);
+                $('#masquer_bonnes_reponses').attr('disabled', true);
+            }
+
+            $('#question_intitule').text(data.question.intitule_question + ' ?');
+            afficherReponses(data);
+
+            if(data.last == true){
+                $('#question_suivante').attr('disabled', true);
+            }
+
+            if(!data.premiereFois){
+                $('#reposer_question').attr('disabled', true);
+            }
+
+            $('#question_suivante').click(function(){
+                socket.emit('poser_question', {nouvelle_question: true, init: false, nom_salon: nom_salon});
+            });
+
+            $('#reposer_question').click(function(){
+                socket.emit('poser_question', {nouvelle_question: false, init: false, nom_salon: nom_salon});
+            });
+
+            $('#afficher_stats').click(function(){
+                afficherStatsDisabled = true;
+                $(this).attr('disabled', true);
+                $('#masquer_stats').attr('disabled', false);
+
+                socket.emit('maj_stats', {premiereFois: data.premiereFois,
+                                            nom_salon: nom_salon,
+                                                show_stats: true,
+                                                    hide_stats: false,
+                                                        show_bonnes_reponses: false,
+                                                            hide_bonnes_reponses: false});
+            })
+
+            $('#masquer_stats').click(function(){
+                $('#afficher_stats').attr('disabled', false);
+                $(this).attr('disabled', true);
+                afficherStatsDisabled = false;
+
+                socket.emit('maj_stats', {premiereFois: data.premiereFois,
+                                            nom_salon: nom_salon,
+                                                show_stats: false,
+                                                    hide_stats: true,
+                                                        show_bonnes_reponses: false,
+                                                            hide_bonnes_reponses: false});
+            })
+
+            $('#afficher_bonnes_reponses').click(function(){
+                afficherReponsesDisable = true;
+                $(this).attr('disabled', true);
+                $('#masquer_bonnes_reponses').attr('disabled', false);
+
+                socket.emit('maj_stats', {premiereFois: data.premiereFois,
+                                            nom_salon: nom_salon,
+                                                show_stats: false,
+                                                    hide_stats: false,
+                                                        show_bonnes_reponses: true,
+                                                            hide_bonnes_reponses: false});
+            })
+
+            $('#masquer_bonnes_reponses').click(function(){
+                afficherReponsesDisable = false;
+                $(this).attr('disabled', true);
+                $('#afficher_bonnes_reponses').attr('disabled', false);
+
+                socket.emit('maj_stats', {premiereFois: data.premiereFois,
+                                            nom_salon: nom_salon,
+                                                show_stats: false,
+                                                    hide_stats: false,
+                                                        show_bonnes_reponses: false,
+                                                            hide_bonnes_reponses: true});
+            })
+        }
+    });
+
+    socket.on('new_rep', function(data){
+        if(data.nom_salon == nom_salon){
+            afficherReponses(data)
+        }
+    });
+
+    function afficherReponses(data){
+
+        $('#reponses').html('');
+
+        var div_reponses = $(document.createElement('div'));
+
+        div_reponses.addClass('div_reponses');
+
+        div_reponses.append('<h2>Résultats du premier sondage</h2>');
+
+        div_reponses.append('<div>réponse "'+ data.question.intitule_reponse1 + '":' + data.reponses.reponse_1 + '</div>');
+        div_reponses.append('<div>réponse "'+ data.question.intitule_reponse2 + '":' + data.reponses.reponse_2 + '</div>');
+        div_reponses.append('<div>réponse "'+ data.question.intitule_reponse3 + '":' + data.reponses.reponse_3 + '</div>');
+
+        $('#reponses').append(div_reponses);
+
+        if(!data.premiereFois){
+            var div_reponses_bis = $(document.createElement('div'));
+
+            div_reponses_bis.addClass('div_reponses');
+
+            div_reponses_bis.append('<h2>Résultats du second sondage</h2>');
+
+            div_reponses_bis.append('<div>réponse "'+ data.question.intitule_reponse1 + '":' + data.reponses_bis.reponse_1 + '</div>');
+            div_reponses_bis.append('<div>réponse "'+ data.question.intitule_reponse2 + '":' + data.reponses_bis.reponse_2 + '</div>');
+            div_reponses_bis.append('<div>réponse "'+ data.question.intitule_reponse3 + '":' + data.reponses_bis.reponse_3 + '</div>');
+
+            $('#reponses').append(div_reponses_bis);
+        }
+    }
+</script>
+</body>
+</html>

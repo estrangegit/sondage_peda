@@ -1,0 +1,95 @@
+body{
+    width: 80%;
+    margin: auto;
+    color:#404040;
+}
+
+h1{
+    text-align: center;
+    background-color: #f2f2f2;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    border-radius: 5px;
+}
+
+#liste_utilisateurs a{
+    text-decoration: none;
+    color: #FF0000;
+}
+
+#liste_utilisateurs a:hover {
+    color: #000000;
+}
+
+#liste_utilisateurs ul{
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    margin-bottom: 30px;
+}
+
+#liste_utilisateurs ul li{
+    border-bottom: 1px solid black;
+    width: 40%;
+    text-align: center;
+    padding: 10px;
+}
+
+#content #reponses .div_reponses{
+    display: inline-block;
+    width: 49%;
+}
+
+#content .middle{
+    display: inline-block;
+    width: 49%;
+    text-align: center;
+}
+
+#creation_salon_enseignant{
+    width: 50%;
+    margin: auto;
+    text-align: center;
+}
+
+#creation_salon_enseignant form fieldset{
+    padding: 50px;
+    background-color: rgba(230, 230, 230, 0.5);
+}
+
+#ajoutQuestion {
+
+    margin-top: 50px;
+    width: 17%;
+}
+
+#lancer_questions{
+    margin-top: 10px;
+}
+
+#ajoutQuestion a {
+    background: #0099ff;
+    background-image: -webkit-linear-gradient(top, #0099ff, #387fab);
+    background-image: -moz-linear-gradient(top, #0099ff, #387fab);
+    background-image: -ms-linear-gradient(top, #0099ff, #387fab);
+    background-image: -o-linear-gradient(top, #0099ff, #387fab);
+    background-image: linear-gradient(to bottom, #0099ff, #387fab);
+    -webkit-border-radius: 28;
+    -moz-border-radius: 28;
+    border-radius: 28px;
+    font-family: Arial;
+    color: #ffffff;
+    font-size: 20px;
+    padding: 10px 20px 10px 20px;
+    text-decoration: none;
+}
+
+#ajoutQuestion a:hover{
+    background: #3cb0fd;
+    background-image: -webkit-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: -moz-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: -ms-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: -o-linear-gradient(top, #3cb0fd, #3498db);
+    background-image: linear-gradient(to bottom, #3cb0fd, #3498db);
+    text-decoration: none;
+}

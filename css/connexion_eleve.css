@@ -1,0 +1,11 @@
+#connexion_eleve{
+    width: 50%;
+    margin: auto;
+    text-align: center;
+    margin-top: 150px;
+}
+
+#connexion_eleve form fieldset{
+    padding: 50px;
+    background-color: rgba(230, 230, 230, 0.5);
+}

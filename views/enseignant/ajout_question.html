@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Question-Stat</title>
+    <link rel="stylesheet" type="text/css" href="css/ajout_question.css">
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+    <script src="../js/jquery-3.1.1.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+<h1>Créer une question</h1>
+<section id="alert"></section>
+<form>
+    <div>
+        <label>Choisissez le niveau :</label>
+        <select id="listNiveaux">
+        </select>
+    </div>
+    <div>
+        <label>Choisissez le module :</label>
+        <select id="listModules">
+        </select>
+    </div>
+    <div>
+        <label>Votre question (sans le "?") :</label>
+        <input id="question" type="text" placeholder="votre question" name="question"/>
+    </div>
+    <div>
+        <label>Réponse 1 :</label>
+        <input id="reponse_1" type="text" placeholder="réponse 1" name="reponse1"/>
+    </div>
+    <div>
+        <label>Réponse 2 :</label>
+        <input id="reponse_2" type="text" placeholder="réponse 2" name="reponse2"/>
+    </div>
+    <div>
+        <label>Réponse 3 :</label>
+        <input id="reponse_3" type="text" placeholder="réponse 3" name="reponse3"/>
+    </div>
+    <div>
+        <label>Choix multiple:</label>
+        <input type="radio" value="1" name="multiple"/>
+        <label>oui</label>
+        <input type="radio" value="0" name="multiple"/>
+        <label>non</label>
+    </div>
+    <div>
+        <input id="validerQuestion" type="submit" value="valider" name="validerQuestion"/>
+    </div>
+</form>
+<div>
+    <a id="retour_accueil" title="retour accueil enseignant" href="/enseignant"/><< Retour accueil Enseignant</a>
+</div>
+<script>
+    var socket = io.connect('http://localhost:8080');
+    //Choix du niveau
+    socket.on('choix_niveau', function(listNiveaux) {
+
+        for (var id in listNiveaux) {
+            $('#listNiveaux').append('<option value="' + id + '">' + listNiveaux[id] + '</option>');
+        }
+
+        var niveauId = $('#listNiveaux').val();
+        socket.emit('choix_niveau', niveauId);
+
+        $('#listNiveaux').click(function(){
+            var niveauId = $('#listNiveaux').val();
+            socket.emit('choix_niveau', niveauId);
+        })
+    });
+
+    //Choix du module
+    socket.on('choix_module', function(listModules) {
+        $('#listModules').html('');
+        for (var id in listModules) {
+            $('#listModules').append('<option value="' + id + '">' + listModules[id] + '</option>');
+        }
+    });
+
+    //Envoi des données saisies
+    $('#validerQuestion').click(function(event){
+        event.preventDefault();
+
+        var choix_module = $('#listModules').val();
+        var question_temp = $('#question').val();
+        var reponse1_temp = $('#reponse_1').val();
+        var reponse2_temp = $('#reponse_2').val();
+        var reponse3_temp = $('#reponse_3').val();
+        var choix_multiple = $('input:radio[name=multiple]:checked').attr('value');
+
+        if(question_temp.trim().length == 0){
+            alert('Veuillez saisir une question');
+        }else if (reponse1_temp.trim().length == 0){
+            alert('Veuillez saisr une réponse 1');
+        } else if (reponse2_temp.trim().length == 0) {
+            alert('Veuillez saisr une réponse 2');
+        }else if (reponse3_temp.trim().length == 0) {
+            alert('Veuillez saisr une réponse 3');
+        }else if ($('input:radio[name=multiple]:checked').length == 0){
+            alert('Veuillez faire votre choix : question à réponses multiples ou pas ?')
+        } else {
+            question = question_temp.trim();
+            reponse1 = reponse1_temp.trim();
+            reponse2 = reponse2_temp.trim();
+            reponse3 = reponse3_temp.trim();
+            socket.emit('newQuestion_data', {choix_module: choix_module, question: question,
+            reponse1 : reponse1, reponse2: reponse2, reponse3: reponse3, multiple: choix_multiple});
+        }
+
+    });
+
+    //réceptionner les messages
+    socket.on('messSuccess', function(message) {
+        $('#alert').html('');
+        $("#alert").append('<div id="message">'+ message + '</div>');
+    });
+</script>
+
+</body>
+</html>

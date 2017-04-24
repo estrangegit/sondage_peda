@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Projecteur-Question-Stat</title>
+    <link rel="stylesheet" type="text/css" href="css/projecteur.css">
+</head>
+<body>
+    <h1>Question-Stat vous fournit les statistiques des réponses</h1>
+    <section id="choix_salon_projecteur">
+        <form>
+            <fieldset>
+                <legend>Choix du salon</legend>
+                <label for="nom_salon">Nom du salon</label> : <input type="text" name="nom_salon" id="nom_salon" autofocus/>
+                <input id="choix_salon" type="submit" value="Choisir le salon"/>
+            </fieldset>
+        </form>
+    </section>
+    <section id="statistiques">
+    </section>
+<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/jquery.canvasjs.min.js"></script>
+<script>
+    var socket = io.connect('http://localhost:8080');
+    var nom_salon;
+    var nbUsers;
+
+    $('#choix_salon').click(function(event){
+        event.preventDefault();
+        nom_salon = $('#nom_salon').val();
+        socket.emit('new_projecteur', nom_salon);
+    });
+
+    socket.on('salon_inexistant', function(){
+        $('#nom_salon').val('');
+        alert("Ce salon n'existe pas" + "\n" + "Merci de rentrer un nom valide");
+    });
+
+    socket.on('entree_salon', function(){
+        document.title = 'projecteur _ ' + nom_salon;
+        $('#choix_salon_projecteur').css('display','none');
+        $('#statistiques').html('<div id="imgQuestion"><img src="images/questions.png" alt="questions en cours..."/></div>');
+    });
+
+    //fermeture du salon
+    socket.on('fermer_salon', function(data){
+        if(data.nom_salon == nom_salon){
+            $('#choix_salon_projecteur').css('display','block');
+            $('#statistiques').html('');
+            $('#nom_salon').val('');
+            nom_salon = '';
+            document.title = 'Question-Stat';
+        }
+    });
+
+    //écoute les étudiants qui se connectent pour calculer le nombre des étudiants connectés au salon
+    socket.on('list_users', function(salon){
+        if(salon.nom_salon == nom_salon){
+            nbUsers = 0;
+            for(var id in salon.listUsers){
+                nbUsers++;
+            }
+        }
+    });
+
+    //mise à jour des statistiques dès qu'un changement est détecté
+    socket.on('maj_stats', function(data){
+        if(data.show_stats && (data.nom_salon == nom_salon)) {
+            var dataChart;
+            if (data.premiereFois) {
+                $('#statistiques').html('<div id="chartContainer"></div>');
+
+                if((typeof nbUsers != 'undefined') && (nbUsers != 0)){
+                    var reponse1 = (parseInt(data.reponses.reponse_1)*100)/nbUsers;
+                    var reponse2 = (parseInt(data.reponses.reponse_2)*100)/nbUsers;
+                    var reponse3 = (parseInt(data.reponses.reponse_3)*100)/nbUsers;
+                }else{
+                    var reponse1 = 0;
+                    var reponse2 = 0;
+                    var reponse3 = 0;
+                }
+
+                var bonne_reponse1 = parseInt(data.bonnes_reponses.bonneReponse_1) * 100;
+                var bonne_reponse2 = parseInt(data.bonnes_reponses.bonneReponse_2) * 100;
+                var bonne_reponse3 = parseInt(data.bonnes_reponses.bonneReponse_3) * 100;
+
+                if(data.show_bonnes_reponses){
+                    dataChart = [
+                        {
+                            type: "column",
+                            color: "red",
+                            legendMarkerType: "square",
+                            showInLegend: true,
+                            legendText: "Réponses des étudiants",
+                            dataPoints: [
+                                {label: data.question.intitule_reponse1, y: reponse1},
+                                {label: data.question.intitule_reponse2, y: reponse2},
+                                {label: data.question.intitule_reponse3, y: reponse3}
+                            ]
+                        },
+                        {
+                            type: "column",
+                            color: "yellow",
+                            legendMarkerType: "square",
+                            showInLegend: true,
+                            legendText: "Bonne(s) Réponse(s)",
+                            dataPoints: [
+                                {label: data.question.intitule_reponse1, y: bonne_reponse1},
+                                {label: data.question.intitule_reponse2, y: bonne_reponse2},
+                                {label: data.question.intitule_reponse3, y: bonne_reponse3}
+                            ]
+                        }
+                    ];
+                }else{
+                    dataChart = [
+                        {
+                            type: "column",
+                            color: "red",
+                            legendMarkerType: "square",
+                            showInLegend: true,
+                            legendText: "Réponses des étudiants",
+                            dataPoints: [
+                                {label: data.question.intitule_reponse1, y: reponse1},
+                                {label: data.question.intitule_reponse2, y: reponse2},
+                                {label: data.question.intitule_reponse3, y: reponse3}
+                            ]
+                        }
+                    ];
+                }
+            } else {
+                $('#statistiques').html('<div id="chartContainer"></div>');
+
+                if((typeof nbUsers != 'undefined') && (nbUsers != 0)){
+                    var reponse1 = (parseInt(data.reponses.reponse_1)*100)/nbUsers;
+                    var reponse2 = (parseInt(data.reponses.reponse_2)*100)/nbUsers;
+                    var reponse3 = (parseInt(data.reponses.reponse_3)*100)/nbUsers;
+
+                    var reponse1_bis = (parseInt(data.reponses_bis.reponse_1)*100)/nbUsers;
+                    var reponse2_bis = (parseInt(data.reponses_bis.reponse_2)*100)/nbUsers;
+                    var reponse3_bis = (parseInt(data.reponses_bis.reponse_3)*100)/nbUsers;
+                }else{
+                    var reponse1 = 0;
+                    var reponse2 = 0;
+                    var reponse3 = 0;
+
+                    var reponse1_bis = 0;
+                    var reponse2_bis = 0;
+                    var reponse3_bis = 0;
+                }
+
+                var bonne_reponse1 = parseInt(data.bonnes_reponses.bonneReponse_1) * 100;
+                var bonne_reponse2 = parseInt(data.bonnes_reponses.bonneReponse_2) * 100;
+                var bonne_reponse3 = parseInt(data.bonnes_reponses.bonneReponse_3) * 100;
+
+                if(data.show_bonnes_reponses){
+                    dataChart = [{
+                            type: "column",
+                            color: "red",
+                            legendMarkerType: "square",
+                            showInLegend: true,
+                            legendText: "Réponses des étudiants la 1ère fois",
+                            dataPoints: [
+                                {label: data.question.intitule_reponse1, y: reponse1},
+                                {label: data.question.intitule_reponse2, y: reponse2},
+                                {label: data.question.intitule_reponse3, y: reponse3}
+                            ]
+                        },
+                        {
+                            type: "column",
+                            color: "blue",
+                            legendMarkerType: "square",
+                            showInLegend: true,
+                            legendText: "Réponses des étudiants la 2ème fois",
+                            dataPoints: [
+                                {label: data.question.intitule_reponse1, y: reponse1_bis},
+                                {label: data.question.intitule_reponse2, y: reponse2_bis},
+                                {label: data.question.intitule_reponse3, y: reponse3_bis}
+                            ]
+                        },
+                        {
+                            type: "column",
+                            color: "yellow",
+                            legendMarkerType: "square",
+                            showInLegend: true,
+                            legendText: "Bonne(s) Réponse(s)",
+                            dataPoints: [
+                                {label: data.question.intitule_reponse1, y: bonne_reponse1},
+                                {label: data.question.intitule_reponse2, y: bonne_reponse2},
+                                {label: data.question.intitule_reponse3, y: bonne_reponse3}
+                            ]
+                        }
+                    ];
+                }else{
+                    dataChart = [{
+                            type: "column",
+                            color: "red",
+                            legendMarkerType: "square",
+                            showInLegend: true,
+                            legendText: "Réponses des étudiants la 1ère fois",
+                            dataPoints: [
+                                {label: data.question.intitule_reponse1, y: reponse1},
+                                {label: data.question.intitule_reponse2, y: reponse2},
+                                {label: data.question.intitule_reponse3, y: reponse3}
+                            ]
+                        },
+                        {
+                            type: "column",
+                            color: "blue",
+                            legendMarkerType: "square",
+                            showInLegend: true,
+                            legendText: "Réponses des étudiants la 2ème fois",
+                            dataPoints: [
+                                {label: data.question.intitule_reponse1, y: reponse1_bis},
+                                {label: data.question.intitule_reponse2, y: reponse2_bis},
+                                {label: data.question.intitule_reponse3, y: reponse3_bis}
+                            ]
+                        }
+                    ];
+                }
+
+            }
+            var chart = new CanvasJS.Chart("chartContainer",
+                {
+                    theme: "theme1",
+                    title:{
+                        text: data.question.intitule_question + ' ?'
+
+                    },
+                    height : 270,
+                    axisY:{
+                        title: "Pourcentage",
+                        interval: 10,
+                        maximum: 100,
+                        suffix: " %",
+                    },
+                    legend: {
+                        horizontalAlign: "right", // "center" , "right"
+                        verticalAlign: "bottom",  // "top" , "bottom"
+                        fontSize: 15
+                    },
+                    data: dataChart
+                });
+            chart.render();
+        }else if(!data.show_stats && (data.nom_salon == nom_salon)){
+            $('#statistiques').html('<div id="imgQuestion"><img src="images/questions.png" alt="questions en cours..."/></div>');
+        }
+    });
+
+</script>
+</body>
+</html>

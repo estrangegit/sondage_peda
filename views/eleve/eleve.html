@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Question-Stat</title>
+    <link rel="stylesheet" type="text/css" href="css/eleve.css">
+    <link rel="stylesheet" type="text/css" href="css/patienter_eleve.css">
+    <link rel="stylesheet" type="text/css" href="css/connexion_eleve.css">
+    <link rel="stylesheet" type="text/css" href="css/question_eleve.css">
+</head>
+<body>
+
+<section id="connexion_eleve">
+    <div>
+        <form>
+            <fieldset>
+                <legend>Formulaire de connexion</legend>
+                <div>
+                    <label for="pseudo">Votre pseudo</label> : <input type="text" name="pseudo" id="pseudo" autofocus/>
+                </div>
+                <div>
+                    <label for="nom_salon">Nom du salon</label> : <input type="text" name="nom_salon" id="nom_salon"/>
+                </div>
+                <input id="connexion" type="submit" value="Connexion"/>
+            </fieldset>
+        </form>
+    </div>
+</section>
+
+<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io.connect('http://localhost:8080');
+
+    var pseudo;
+    var nom_salon;
+
+    $('#connexion').click(function(event){
+        event.preventDefault();
+        pseudo = $('#pseudo').val();
+        nom_salon = $('#nom_salon').val();
+        socket.emit('new_user', {pseudo: pseudo, nom_salon: nom_salon});
+    });
+
+    socket.on('choose_new_pseudo', function(){
+        nom_salon = '';
+        $('#pseudo').val('');
+        alert("Ce pseudo déjà utilisé" + "\n" + "Merci d'en choisir un autre");
+    });
+
+    socket.on('salon_inexistant', function(){
+        $('#nom_salon').val('');
+        alert("Ce salon n'existe pas" + "\n" + "Merci de rentrer un nom valide");
+    });
+
+    socket.on('page_patienter', function(page){
+        document.title = pseudo + ' - ' + nom_salon;
+        $('body').html(page);
+    });
+
+    socket.on('start_question', function(data){
+        if(data.nom_salon == nom_salon){
+            $('body').html(data.page);
+            $('#question_intitule').text(data.question.intitule_question + ' ?');
+            $("[for='reponse_1']").text(data.question.intitule_reponse1);
+            $("[for='reponse_2']").text(data.question.intitule_reponse2);
+            $("[for='reponse_3']").text(data.question.intitule_reponse3);
+
+            $('button#validation_question').click(function(){
+                $(this).attr('disabled', true);
+                var rep = [];
+                if(data.question.multiple){
+                    $(':checkbox:checked').each(function(){
+                        rep.push($(this).val());
+                    });
+                }else{
+                    rep.push($(':radio:checked').val());
+                }
+                socket.emit('new_rep', {rep:rep, premiereFois: data.premiereFois, nom_salon: nom_salon});
+            });
+        }
+    });
+
+    socket.on('eject_user', function(data){
+
+        if(pseudo == data.pseudo && nom_salon == data.nom_salon){
+            document.title = 'Question-Stat';
+
+            alert("Vous avez été déconnecté." + "\n" + "Vous allez être redirigé vers la page de connexion.");
+            $('body').html(data.page);
+
+            $('#connexion').click(function(event){
+                event.preventDefault();
+                pseudo = $('#pseudo').val();
+                nom_salon = $('#nom_salon').val();
+                socket.emit('new_user', {pseudo: pseudo, nom_salon: nom_salon});
+                document.title = pseudo + ' - ' + nom_salon;
+            });
+        }
+    })
+
+    window.onbeforeunload = function() {
+        return false;
+    }
+
+    window.onpagehide = function(){
+        if((typeof nom_salon != 'undefined') && (nom_salon.length != 0))
+            socket.emit('end_session', nom_salon)
+    }
+</script>
+</body>
+</html>
